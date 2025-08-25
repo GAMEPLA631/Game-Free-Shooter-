@@ -145,6 +145,23 @@
             color: #eee;
             z-index: 150;
         }
+
+        #scoreboard {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            padding: 10px;
+            background-color: rgba(0, 0, 0, 0.6);
+            border-radius: 8px;
+            font-size: 24px;
+            font-weight: bold;
+            z-index: 101;
+            text-align: center;
+        }
+
+        #timer {
+            margin-bottom: 5px;
+        }
     </style>
 </head>
 <body>
@@ -163,6 +180,12 @@
         <div id="health-bar"><div id="health-bar-fill"></div></div>
         <br>
         Zbraň: <span id="current-weapon">Pištoľ</span>
+    </div>
+    <div id="scoreboard">
+        <div id="timer">Čas: 10:00</div>
+        <div id="score">
+            <span id="blue-score">0</span> - <span id="red-score">0</span>
+        </div>
     </div>
     <div id="game-message"></div>
     <div id="controls-message">
@@ -195,8 +218,10 @@
     ];
     let currentWeaponIndex = 0;
     let enemies = [];
+    let friendlyAI = []; // New array for friendly AI
     let bullets = []; 
     let enemyBullets = []; 
+    let friendlyBullets = []; // New array for friendly AI bullets
     let lastShotTime = 0;
     
     // Movement variables
@@ -209,10 +234,13 @@
     const speed = 150.0;
     const playerHeight = 50;
     
-    // Enemy spawning
-    let lastEnemySpawn = 0;
-    const enemySpawnInterval = 1000; // spawn every 1 second
-    const maxEnemies = 20; // Max number of enemies on the map at once
+    // AI Spawning
+    const maxUnitsPerTeam = 40; // Max number of units per team on the map at once
+
+    // New variables for scoring and time
+    let blueScore = 0;
+    let redScore = 0;
+    let gameTimeLeft = 600; // 10 minutes in seconds
 
     // New variables for scoping
     let isScoped = false;
@@ -226,6 +254,13 @@
     const controlsMessage = document.getElementById('controls-message');
     const crosshair = document.getElementById('crosshair');
     const sniperScope = document.getElementById('sniper-scope');
+    const scoreboard = document.getElementById('scoreboard');
+    const timerDisplay = document.getElementById('timer');
+    const blueScoreDisplay = document.getElementById('blue-score');
+    const redScoreDisplay = document.getElementById('red-score');
+
+    // Store all the physical objects for AI collision detection
+    const obstacles = [];
 
     // Message Box function
     function showMessage(message, duration = 2000) {
@@ -288,6 +323,7 @@
             hud.style.display = 'block';
             crosshair.style.display = 'block';
             controlsMessage.style.display = 'none';
+            scoreboard.style.display = 'block';
             if (!hasGameStarted) {
                  showMessage("Hra sa začína!");
                  hasGameStarted = true;
@@ -300,6 +336,7 @@
                 hud.style.display = 'none';
                 crosshair.style.display = 'none';
                 controlsMessage.style.display = 'block';
+                scoreboard.style.display = 'none';
             }
         });
 
@@ -310,11 +347,17 @@
         document.addEventListener('contextmenu', onRightClick, false); // Add right-click listener
         document.addEventListener('wheel', onMouseWheel, false); // Add mouse wheel listener
 
-        // Raycaster for shooting
+        // Raycaster for shooting and AI
         raycaster = new THREE.Raycaster();
 
         // Create the game world
         createWorld();
+
+        // Spawn initial units for both teams
+        for (let i = 0; i < maxUnitsPerTeam; i++) {
+            spawnUnit('red');
+            spawnUnit('blue');
+        }
 
         // Start the animation loop
         animate();
@@ -358,6 +401,7 @@
         const ground = new THREE.Mesh(groundGeometry, groundMaterial);
         ground.rotation.x = -Math.PI / 2;
         scene.add(ground);
+        obstacles.push(ground);
 
         // Lights
         const ambientLight = new THREE.AmbientLight(0x404040, 2);
@@ -379,62 +423,91 @@
             house.position.z = Math.random() * 1800 - 900;
             house.position.y = height / 2;
             scene.add(house);
+            obstacles.push(house);
         }
+
+        // --- Boundaries/Walls ---
+        const wallMaterial = new THREE.MeshLambertMaterial({ color: 0x888888 });
+        const wallHeight = 100;
+        const wallDepth = 20;
+        const wallWidth = 2000 + wallDepth; // To ensure no gaps
+
+        // North Wall
+        const northWall = new THREE.Mesh(new THREE.BoxGeometry(wallWidth, wallHeight, wallDepth), wallMaterial);
+        northWall.position.set(0, wallHeight / 2, -1000 - wallDepth / 2);
+        scene.add(northWall);
+        obstacles.push(northWall);
+
+        // South Wall
+        const southWall = new THREE.Mesh(new THREE.BoxGeometry(wallWidth, wallHeight, wallDepth), wallMaterial);
+        southWall.position.set(0, wallHeight / 2, 1000 + wallDepth / 2);
+        scene.add(southWall);
+        obstacles.push(southWall);
+
+        // West Wall
+        const westWall = new THREE.Mesh(new THREE.BoxGeometry(wallDepth, wallHeight, wallWidth), wallMaterial);
+        westWall.position.set(-1000 - wallDepth / 2, wallHeight / 2, 0);
+        scene.add(westWall);
+        obstacles.push(westWall);
+
+        // East Wall
+        const eastWall = new THREE.Mesh(new THREE.BoxGeometry(wallDepth, wallHeight, wallWidth), wallMaterial);
+        eastWall.position.set(1000 + wallDepth / 2, wallHeight / 2, 0);
+        scene.add(eastWall);
+        obstacles.push(eastWall);
     }
 
-    // Function to spawn AI enemies
-    function spawnEnemies() {
-        if (enemies.length >= maxEnemies) {
-            return;
-        }
-
+    // Function to spawn AI units (red enemies or blue friendlies)
+    function spawnUnit(team) {
         const safeZoneRadius = 200; // Define a radius around the player spawn point to avoid
         const spawnRange = 900; // Max spawn distance from center
 
-        const enemyGeometry = new THREE.BoxGeometry(20, 40, 20);
-        const enemyMaterial = new THREE.MeshLambertMaterial({ color: 0xff0000 });
-        const enemy = new THREE.Mesh(enemyGeometry, enemyMaterial);
+        const materialColor = (team === 'red') ? 0xff0000 : 0x0000ff;
+        const unitGeometry = new THREE.BoxGeometry(20, 40, 20);
+        const unitMaterial = new THREE.MeshLambertMaterial({ color: materialColor });
+        const unit = new THREE.Mesh(unitGeometry, unitMaterial);
         
         let x, z;
-        // Generate coordinates outside the safe zone around the player's spawn point (0,0,0)
         do {
-            x = Math.random() * spawnRange * 2 - spawnRange; // -900 to 900
-            z = Math.random() * spawnRange * 2 - spawnRange; // -900 to 900
+            x = Math.random() * spawnRange * 2 - spawnRange;
+            z = Math.random() * spawnRange * 2 - spawnRange;
         } while (Math.sqrt(x * x + z * z) < safeZoneRadius);
 
-        enemy.position.x = x;
-        enemy.position.z = z;
-        enemy.position.y = 20;
-        enemy.health = 100;
-        enemy.lastShotTime = 0;
-        enemies.push(enemy);
-        scene.add(enemy);
+        unit.position.x = x;
+        unit.position.z = z;
+        unit.position.y = 20;
+        unit.health = 100;
+        unit.lastShotTime = 0;
+
+        if (team === 'red') {
+            enemies.push(unit);
+        } else {
+            friendlyAI.push(unit);
+        }
+        scene.add(unit);
     }
 
-    // Player shooting logic
+    // Player shooting logic without fire rate limit
     function onMouseDown(event) {
         if (controls.isLocked === true && event.button === 0 && !isGameOver) {
-            const currentTime = performance.now();
+            // No fire rate check, so you can shoot as fast as you click
             const currentWeapon = weapons[currentWeaponIndex];
-            if (currentTime - lastShotTime > currentWeapon.fireRate) {
-                lastShotTime = currentTime;
+            
+            // Create a bullet mesh for the player
+            const bulletGeometry = new THREE.SphereGeometry(2, 8, 8);
+            const bulletMaterial = new THREE.MeshBasicMaterial({ color: 0xffff00 }); // Yellow bullet for the player
+            const bullet = new THREE.Mesh(bulletGeometry, bulletMaterial);
 
-                // Create a bullet mesh
-                const bulletGeometry = new THREE.SphereGeometry(2, 8, 8);
-                const bulletMaterial = new THREE.MeshBasicMaterial({ color: 0xffff00 }); // Yellow bullet for the player
-                const bullet = new THREE.Mesh(bulletGeometry, bulletMaterial);
+            // Position the bullet at the camera's location
+            bullet.position.copy(camera.position);
 
-                // Position the bullet at the camera's location
-                bullet.position.copy(camera.position);
+            // Set bullet velocity
+            const bulletDirection = new THREE.Vector3();
+            camera.getWorldDirection(bulletDirection);
+            bullet.velocity = bulletDirection.multiplyScalar(1000); // Set bullet speed
 
-                // Set bullet velocity
-                const bulletDirection = new THREE.Vector3();
-                camera.getWorldDirection(bulletDirection);
-                bullet.velocity = bulletDirection.multiplyScalar(1000); // Set bullet speed
-
-                scene.add(bullet);
-                bullets.push(bullet);
-            }
+            scene.add(bullet);
+            bullets.push(bullet);
         }
     }
     
@@ -461,71 +534,200 @@
         }
     }
 
-    // AI logic for enemies
-    function updateEnemies(delta) {
-        const playerPosition = controls.getObject().position;
+    // Find the nearest target (enemy for friendly AI, friendly AI or player for enemies)
+    function findNearestTarget(unit, targets) {
+        let nearestTarget = null;
+        let minDistance = Infinity;
+
+        // Combine friendly AI and player as targets for red enemies
+        if (unit.material.color.getHex() === 0xff0000) {
+            const playerPosition = controls.getObject().position;
+            targets = [...friendlyAI, { position: playerPosition, isPlayer: true }];
+        }
+        
+        targets.forEach(target => {
+            const distance = unit.position.distanceTo(target.position);
+            if (distance < minDistance) {
+                minDistance = distance;
+                nearestTarget = target;
+            }
+        });
+        return nearestTarget;
+    }
+
+    // Function to check for and avoid obstacles
+    function avoidObstacles(unit, direction) {
+        const avoidanceRaycaster = new THREE.Raycaster(unit.position, direction, 0, 50);
+        const intersections = avoidanceRaycaster.intersectObjects(obstacles, true);
+        if (intersections.length > 0) {
+            // Found an obstacle, change direction randomly
+            direction.set(Math.random() - 0.5, 0, Math.random() - 0.5).normalize();
+        }
+    }
+
+    // AI logic for enemies (red) and friendly AI (blue)
+    function updateAI(delta) {
+        const separationDistance = 100; // Distance to maintain from other units
+        const avoidanceStrength = 0.5; // How much to prioritize avoidance over targeting
+
+        // Logic for red enemies
         enemies.forEach(enemy => {
-            // Simple AI: Move towards the player
-            const directionVector = new THREE.Vector3().subVectors(playerPosition, enemy.position);
-            directionVector.y = 0; // Keep movement on the horizontal plane
-            directionVector.normalize();
-            enemy.position.addScaledVector(directionVector, delta * 80);
+            // Find nearest target
+            const target = findNearestTarget(enemy, friendlyAI);
+            let targetDirection = new THREE.Vector3();
+            if (target) {
+                targetDirection.subVectors(target.position, enemy.position);
+            }
 
-            // Simple AI: Shoot at the player
-            const currentTime = performance.now();
-            if (currentTime - enemy.lastShotTime > 1000) { // Shotgun cooldown
-                enemy.lastShotTime = currentTime;
-                const distance = enemy.position.distanceTo(playerPosition);
-                if (distance < 150) { // Only shoot if the player is close
-                    // Create a bullet for the enemy
-                    const enemyBulletGeometry = new THREE.SphereGeometry(2, 8, 8);
-                    const enemyBulletMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000 }); // Red bullet for the enemy
-                    const enemyBullet = new THREE.Mesh(enemyBulletGeometry, enemyBulletMaterial);
-
-                    // Position the bullet at the enemy's location
-                    enemyBullet.position.copy(enemy.position);
-                    enemyBullet.position.y += 20; // Adjust bullet origin to enemy's center
-
-                    // Set bullet velocity to move towards player
-                    const enemyBulletDirection = new THREE.Vector3().subVectors(playerPosition, enemy.position);
-                    enemyBulletDirection.normalize();
-                    enemyBullet.velocity = enemyBulletDirection.multiplyScalar(500); // Slower bullet speed for enemies
-
-                    scene.add(enemyBullet);
-                    enemyBullets.push(enemyBullet);
+            // Calculate avoidance vector from other enemies
+            let avoidanceVector = new THREE.Vector3();
+            enemies.forEach(otherEnemy => {
+                if (enemy !== otherEnemy) {
+                    const distance = enemy.position.distanceTo(otherEnemy.position);
+                    if (distance < separationDistance) {
+                        const awayVector = new THREE.Vector3().subVectors(enemy.position, otherEnemy.position);
+                        awayVector.normalize();
+                        avoidanceVector.add(awayVector);
+                    }
                 }
+            });
+
+            // Combine the vectors
+            let combinedVector = new THREE.Vector3();
+            combinedVector.addScaledVector(targetDirection.normalize(), 1.0); // Prioritize targeting
+            combinedVector.addScaledVector(avoidanceVector, avoidanceStrength); // Add avoidance
+            
+            // Check for and avoid obstacles before moving
+            avoidObstacles(enemy, combinedVector);
+            
+            // Move the enemy
+            if (combinedVector.length() > 0) {
+                combinedVector.normalize();
+                enemy.position.addScaledVector(combinedVector, delta * 80);
+            }
+            enemy.position.y = 20; // Keep the NPC on the ground!
+
+            // The AI is now more aggressive and shoots more often
+            const currentTime = performance.now();
+            if (target && currentTime - enemy.lastShotTime > 500) { // Increased fire rate
+                enemy.lastShotTime = currentTime;
+                
+                const enemyBulletGeometry = new THREE.SphereGeometry(2, 8, 8);
+                const enemyBulletMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000 });
+                const enemyBullet = new THREE.Mesh(enemyBulletGeometry, enemyBulletMaterial);
+                enemyBullet.position.copy(enemy.position);
+                enemyBullet.position.y += 20;
+
+                const enemyBulletDirection = new THREE.Vector3().subVectors(target.position, enemy.position);
+                enemyBulletDirection.normalize();
+                enemyBullet.velocity = enemyBulletDirection.multiplyScalar(500);
+
+                scene.add(enemyBullet);
+                enemyBullets.push(enemyBullet);
+            }
+        });
+
+        // Logic for friendly AI
+        friendlyAI.forEach(friendly => {
+            // Find nearest target
+            const target = findNearestTarget(friendly, enemies);
+            let targetDirection = new THREE.Vector3();
+            if (target) {
+                targetDirection.subVectors(target.position, friendly.position);
+            }
+
+            // Calculate avoidance vector from other friendly AI
+            let avoidanceVector = new THREE.Vector3();
+            friendlyAI.forEach(otherFriendly => {
+                if (friendly !== otherFriendly) {
+                    const distance = friendly.position.distanceTo(otherFriendly.position);
+                    if (distance < separationDistance) {
+                        const awayVector = new THREE.Vector3().subVectors(friendly.position, otherFriendly.position);
+                        awayVector.normalize();
+                        avoidanceVector.add(awayVector);
+                    }
+                }
+            });
+
+            // Combine the vectors
+            let combinedVector = new THREE.Vector3();
+            combinedVector.addScaledVector(targetDirection.normalize(), 1.0);
+            combinedVector.addScaledVector(avoidanceVector, avoidanceStrength);
+            
+            // Check for and avoid obstacles before moving
+            avoidObstacles(friendly, combinedVector);
+
+            // Move the friendly AI
+            if (combinedVector.length() > 0) {
+                combinedVector.normalize();
+                friendly.position.addScaledVector(combinedVector, delta * 80);
+            }
+            friendly.position.y = 20; // Keep the NPC on the ground!
+            
+            // The AI is now more aggressive and shoots more often
+            const currentTime = performance.now();
+            if (target && currentTime - friendly.lastShotTime > 500) { // Increased fire rate
+                friendly.lastShotTime = currentTime;
+
+                const friendlyBulletGeometry = new THREE.SphereGeometry(2, 8, 8);
+                const friendlyBulletMaterial = new THREE.MeshBasicMaterial({ color: 0x00ffff }); // Cyan bullets for friendly AI
+                const friendlyBullet = new THREE.Mesh(friendlyBulletGeometry, friendlyBulletMaterial);
+                friendlyBullet.position.copy(friendly.position);
+                friendlyBullet.position.y += 20;
+
+                const friendlyBulletDirection = new THREE.Vector3().subVectors(target.position, friendly.position);
+                friendlyBulletDirection.normalize();
+                friendlyBullet.velocity = friendlyBulletDirection.multiplyScalar(500);
+
+                scene.add(friendlyBullet);
+                friendlyBullets.push(friendlyBullet);
             }
         });
     }
 
+    // Function to handle the death of an AI unit
+    function handleAIDeath(unit, team) {
+        scene.remove(unit);
+        if (team === 'red') {
+            const index = enemies.indexOf(unit);
+            if (index > -1) {
+                enemies.splice(index, 1);
+            }
+        } else {
+            const index = friendlyAI.indexOf(unit);
+            if (index > -1) {
+                friendlyAI.splice(index, 1);
+            }
+        }
+        
+        // Immediately respawn a new unit of the same team
+        spawnUnit(team);
+    }
+
+
     // Update bullets and check for collisions
     function updateBullets(delta) {
+        // Player's bullets hitting enemies
         for (let i = bullets.length - 1; i >= 0; i--) {
             const bullet = bullets[i];
-            
-            // Move bullet
             bullet.position.addScaledVector(bullet.velocity, delta);
 
-            // Check for collision with enemies
             let hit = false;
             for (let j = enemies.length - 1; j >= 0; j--) {
                 const enemy = enemies[j];
                 const distance = bullet.position.distanceTo(enemy.position);
 
-                if (distance < 20) { // Collision detected
-                    // Use damage from the current weapon
+                if (distance < 20) {
                     enemy.health -= weapons[currentWeaponIndex].damage; 
-                    
                     if (enemy.health <= 0) {
-                        scene.remove(enemy);
-                        enemies.splice(j, 1);
+                        handleAIDeath(enemy, 'red'); // Call the death function
+                        blueScore++; // Player is on the blue team
                     }
                     hit = true;
                     break;
                 }
             }
 
-            // Remove bullet if it hit something or went too far
             if (hit || bullet.position.length() > 1000) {
                 scene.remove(bullet);
                 bullets.splice(i, 1);
@@ -533,29 +735,67 @@
         }
     }
 
-    // Update enemy bullets and check for collision with player
+    // Update enemy bullets and check for collision with player or friendly AI
     function updateEnemyBullets(delta) {
         for (let i = enemyBullets.length - 1; i >= 0; i--) {
             const bullet = enemyBullets[i];
-            
-            // Move bullet
             bullet.position.addScaledVector(bullet.velocity, delta);
             
-            // Check for collision with player
             const playerPosition = controls.getObject().position;
-            const distance = bullet.position.distanceTo(playerPosition);
-            
+            const distanceToPlayer = bullet.position.distanceTo(playerPosition);
             let hit = false;
-            if (distance < 20) { // Collision detected with player
-                takeDamage(10); // Player takes 10 damage
-                showMessage(`Zasiahol ťa nepriateľ!`);
+            
+            if (distanceToPlayer < 20) { // Collision with player
+                takeDamage(10);
                 hit = true;
+            } else { // Check for collision with friendly AI
+                for (let j = friendlyAI.length - 1; j >= 0; j--) {
+                    const friendly = friendlyAI[j];
+                    const distanceToFriendly = bullet.position.distanceTo(friendly.position);
+                    if (distanceToFriendly < 20) {
+                        friendly.health -= 10;
+                        if (friendly.health <= 0) {
+                            handleAIDeath(friendly, 'blue'); // Call the death function
+                            redScore++;
+                        }
+                        hit = true;
+                        break;
+                    }
+                }
             }
 
-            // Remove bullet if it hit something or went too far
             if (hit || bullet.position.length() > 1000) {
                 scene.remove(bullet);
                 enemyBullets.splice(i, 1);
+            }
+        }
+    }
+
+    // Update friendly bullets and check for collision with enemies
+    function updateFriendlyBullets(delta) {
+        for (let i = friendlyBullets.length - 1; i >= 0; i--) {
+            const bullet = friendlyBullets[i];
+            bullet.position.addScaledVector(bullet.velocity, delta);
+
+            let hit = false;
+            for (let j = enemies.length - 1; j >= 0; j--) {
+                const enemy = enemies[j];
+                const distance = bullet.position.distanceTo(enemy.position);
+
+                if (distance < 20) {
+                    enemy.health -= 20; // Friendly AI damage
+                    if (enemy.health <= 0) {
+                        handleAIDeath(enemy, 'red'); // Call the death function
+                        blueScore++; // Friendly AI kill
+                    }
+                    hit = true;
+                    break;
+                }
+            }
+
+            if (hit || bullet.position.length() > 1000) {
+                scene.remove(bullet);
+                friendlyBullets.splice(i, 1);
             }
         }
     }
@@ -566,33 +806,87 @@
         if (playerHealth < 0) playerHealth = 0;
         healthBarFill.style.width = `${playerHealth}%`;
         if (playerHealth <= 0) {
+            redScore++; // Zvýšenie skóre červeného tímu, keď ťa zabijú
             gameOver();
         }
     }
 
-    // Game over logic
+    // Game over logic (from player death)
     function gameOver() {
         isGameOver = true;
         controls.unlock();
         showMessage("Zomrel si! Znovuzrodenie...", 3000);
             
-        // Wait for 3 seconds before respawning
         setTimeout(() => {
-            // Reset player health
             playerHealth = 100;
             healthBarFill.style.width = `${playerHealth}%`;
-
-            // Reset player position
             controls.getObject().position.set(0, playerHeight, 0);
-
-            // Clear all enemy bullets to avoid instant re-death
             enemyBullets.forEach(bullet => scene.remove(bullet));
             enemyBullets = [];
-
-            // Reset game over flag and re-lock controls
             isGameOver = false;
             controls.lock();
-        }, 3000); // 3-second delay
+        }, 3000);
+    }
+    
+    // Game over logic (from timer)
+    function endGame() {
+        isGameOver = true;
+        controls.unlock();
+        let message = "";
+        if (blueScore > redScore) {
+            message = "Modrý tím vyhral!";
+        } else if (redScore > blueScore) {
+            message = "Červený tím vyhral!";
+        } else {
+            message = "Remíza!";
+        }
+        showMessage(`Hra skončila! ${message}`, 5000);
+
+        // Reset game state after a delay for a new arena
+        setTimeout(resetGame, 5000);
+    }
+
+    function resetGame() {
+        // Clear all enemies and friendly AI from the scene and arrays
+        enemies.forEach(enemy => scene.remove(enemy));
+        enemies = [];
+        friendlyAI.forEach(friendly => scene.remove(friendly));
+        friendlyAI = [];
+        bullets.forEach(bullet => scene.remove(bullet));
+        bullets = [];
+        enemyBullets.forEach(bullet => scene.remove(bullet));
+        enemyBullets = [];
+        friendlyBullets.forEach(bullet => scene.remove(bullet));
+        friendlyBullets = [];
+        
+        // Reset scores and timer
+        blueScore = 0;
+        redScore = 0;
+        gameTimeLeft = 600;
+        playerHealth = 100;
+        healthBarFill.style.width = `${playerHealth}%`;
+        
+        // Respawn initial units
+        for (let i = 0; i < maxUnitsPerTeam; i++) {
+            spawnUnit('red');
+            spawnUnit('blue');
+        }
+
+        // Respawn player
+        controls.getObject().position.set(0, playerHeight, 0);
+
+        // Start the game again
+        isGameOver = false;
+        controls.lock();
+    }
+
+    // Update scoreboard GUI
+    function updateScoreboard() {
+        const minutes = Math.floor(gameTimeLeft / 60);
+        const seconds = Math.floor(gameTimeLeft % 60).toString().padStart(2, '0');
+        timerDisplay.textContent = `Čas: ${minutes}:${seconds}`;
+        blueScoreDisplay.textContent = blueScore;
+        redScoreDisplay.textContent = redScore;
     }
 
     // Keyboard input handling
@@ -660,17 +954,17 @@
         const delta = (currentTime - prevTime) / 1000;
 
         if (controls.isLocked === true && !isGameOver) {
-            // Spawn enemies on a timer
-            if (currentTime - lastEnemySpawn > enemySpawnInterval) {
-                spawnEnemies();
-                lastEnemySpawn = currentTime;
+            // Update game timer
+            gameTimeLeft -= delta;
+            if (gameTimeLeft <= 0) {
+                gameTimeLeft = 0;
+                endGame();
             }
+            updateScoreboard();
 
             // Apply gravity
             velocity.y -= 9.8 * 100.0 * delta;
 
-            // Player horizontal movement
-            // Pohyb sa teraz nasobi koeficientom rychlosti zbrane
             const currentWeapon = weapons[currentWeaponIndex];
             const currentSpeed = speed * currentWeapon.speedMultiplier;
 
@@ -683,7 +977,6 @@
             controls.moveRight(horizontalVelocity.x * delta);
             controls.moveForward(horizontalVelocity.z * delta);
 
-            // Apply vertical movement (jumping and gravity)
             controls.getObject().position.y += velocity.y * delta;
 
             if (controls.getObject().position.y < playerHeight) {
@@ -692,10 +985,19 @@
                 canJump = true;
             }
 
-            // Update enemies and bullets
-            updateEnemies(delta);
+            // --- Collision detection with the outer walls ---
+            const playerPosition = controls.getObject().position;
+            const wallBoundary = 980; // A little buffer to avoid issues
+            
+            // Clamp the player's position to stay within the boundaries
+            playerPosition.x = Math.max(-wallBoundary, Math.min(wallBoundary, playerPosition.x));
+            playerPosition.z = Math.max(-wallBoundary, Math.min(wallBoundary, playerPosition.z));
+
+            // Update AI and bullets
+            updateAI(delta);
             updateBullets(delta); 
             updateEnemyBullets(delta); 
+            updateFriendlyBullets(delta);
         }
 
         prevTime = currentTime;
@@ -708,3 +1010,4 @@
 
 </body>
 </html>
+
