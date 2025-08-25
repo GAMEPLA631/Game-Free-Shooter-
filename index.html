@@ -3,1001 +3,634 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Roblox Shooting Game</title>
+    <title>Galactic Brawlers</title>
     <style>
         body {
             margin: 0;
             overflow: hidden;
+            background-color: #000;
             font-family: 'Arial', sans-serif;
-            background-color: #f0f0f0;
             color: #fff;
+            text-align: center;
         }
 
-        #game-container {
-            width: 100vw;
-            height: 100vh;
-            position: relative;
+        #gameCanvas {
+            display: block;
         }
 
-        #crosshair {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            width: 20px;
-            height: 20px;
-            margin-left: -10px;
-            margin-top: -10px;
-            border: 2px solid white;
-            border-radius: 50%;
-            background-color: rgba(255, 255, 255, 0.2);
-            box-shadow: 0 0 5px 2px rgba(0, 0, 0, 0.5);
-            pointer-events: none;
-            z-index: 100;
-        }
-
-        #crosshair::after {
-            content: '';
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            width: 4px;
-            height: 4px;
-            background-color: white;
-            border-radius: 50%;
-        }
-
-        #sniper-scope {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0, 0, 0, 0.8);
-            display: none; /* Initially hidden */
-            z-index: 101;
-            pointer-events: none;
-        }
-
-        #scope-overlay {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            width: 100vh;
-            height: 100vh;
-            border-radius: 50%;
-            box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.8);
-            border: 2px solid #fff;
-        }
-
-        #scope-crosshair-h {
-            position: absolute;
-            top: 50%;
-            left: 0;
-            width: 100%;
-            height: 2px;
-            background-color: #ff0000;
-        }
-        #scope-crosshair-v {
-            position: absolute;
-            top: 0;
-            left: 50%;
-            width: 2px;
-            height: 100%;
-            background-color: #ff0000;
-        }
-
-        #hud {
-            position: absolute;
-            top: 10px;
-            left: 10px;
-            padding: 10px;
-            background-color: rgba(0, 0, 0, 0.6);
-            border-radius: 8px;
-            font-size: 18px;
-            font-weight: bold;
-            z-index: 101;
-        }
-
-        #health-bar {
-            width: 200px;
-            height: 20px;
-            background-color: #555;
-            border: 2px solid #ccc;
-            border-radius: 5px;
-            margin-top: 5px;
-        }
-
-        #health-bar-fill {
-            height: 100%;
-            width: 100%;
-            background-color: #4CAF50;
-            border-radius: 3px;
-            transition: width 0.3s ease-in-out;
-        }
-
-        #game-message {
+        #messageBox {
             position: absolute;
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
             background-color: rgba(0, 0, 0, 0.7);
-            padding: 20px 40px;
+            padding: 20px;
             border-radius: 10px;
-            font-size: 24px;
-            font-weight: bold;
-            text-align: center;
             display: none;
-            z-index: 200;
+            font-size: 1.5rem;
+            border: 2px solid #ffcc00;
         }
 
-        #controls-message {
+        #instructions {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background-color: rgba(0, 0, 0, 0.5);
+            padding: 10px;
+            border-radius: 5px;
+            font-size: 0.9rem;
+            text-align: left;
+            z-index: 10;
+        }
+        
+        #scoreDisplay {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background-color: rgba(0, 0, 0, 0.5);
+            padding: 10px;
+            border-radius: 5px;
+            font-size: 1.2rem;
+            font-weight: bold;
+            z-index: 10;
+        }
+
+        .team-a-score {
+            color: #00bfff; /* Modrá farba pre Team A */
+        }
+        
+        .team-b-score {
+            color: #ff4500; /* Oranžová farba pre Team B */
+        }
+
+        #timerDisplay {
+            position: absolute;
+            top: 50px;
+            right: 10px;
+            background-color: rgba(0, 0, 0, 0.5);
+            padding: 10px;
+            border-radius: 5px;
+            font-size: 1.2rem;
+            font-weight: bold;
+            z-index: 10;
+        }
+
+        #controls {
             position: absolute;
             bottom: 20px;
             left: 50%;
             transform: translateX(-50%);
-            background-color: rgba(0, 0, 0, 0.7);
+            z-index: 10;
+        }
+
+        #newGameButton {
+            background-color: #4CAF50;
+            border: none;
+            color: white;
             padding: 10px 20px;
-            border-radius: 8px;
+            text-align: center;
+            text-decoration: none;
+            display: inline-block;
             font-size: 16px;
-            text-align: center;
-            color: #eee;
-            z-index: 150;
-        }
-
-        #scoreboard {
-            position: absolute;
-            top: 10px;
-            right: 10px;
-            padding: 10px;
-            background-color: rgba(0, 0, 0, 0.6);
+            margin: 4px 2px;
+            cursor: pointer;
             border-radius: 8px;
-            font-size: 24px;
-            font-weight: bold;
-            z-index: 101;
-            text-align: center;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+            transition: all 0.3s ease;
         }
 
-        #timer {
-            margin-bottom: 5px;
+        #newGameButton:hover {
+            background-color: #45a049;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 8px rgba(0,0,0,0.5);
         }
     </style>
 </head>
 <body>
 
-<div id="game-container">
-    <div id="crosshair"></div>
-    <!-- New HTML for the sniper scope -->
-    <div id="sniper-scope">
-        <div id="scope-overlay">
-            <div id="scope-crosshair-h"></div>
-            <div id="scope-crosshair-v"></div>
-        </div>
+    <!--
+    Hlavný element, do ktorého Three.js vykreslí 3D scénu.
+    -->
+    <canvas id="gameCanvas"></canvas>
+
+    <!--
+    Jednoduchý div na zobrazovanie herných správ.
+    -->
+    <div id="messageBox"></div>
+
+    <!--
+    Inštrukcie pre hráča
+    -->
+    <div id="instructions">
+        <h2>Inštrukcie</h2>
+        <p>Pohyb: **W, A, S, D** alebo **šipky**</p>
+        <p>Strieľanie: **Kliknite myšou**</p>
     </div>
-    <div id="hud">
-        Zdravie: <br>
-        <div id="health-bar"><div id="health-bar-fill"></div></div>
-        <br>
-        Zbraň: <span id="current-weapon">Pištoľ</span>
+
+    <!--
+    Ukazovateľ skóre
+    -->
+    <div id="scoreDisplay">
+        <span class="team-a-score">Modrý tím: 0</span> - <span class="team-b-score">Červený tím: 0</span>
     </div>
-    <div id="scoreboard">
-        <div id="timer">Čas: 10:00</div>
-        <div id="score">
-            <span id="blue-score">0</span> - <span id="red-score">0</span>
-        </div>
+
+    <!--
+    Časovač hry
+    -->
+    <div id="timerDisplay">
+        Čas: 08:00
     </div>
-    <div id="game-message"></div>
-    <div id="controls-message">
-        Klikni pre štart. Pohyb: WASD alebo šípky. Strieľaj: ľavé tlačidlo myši. Zameraj sa: pravé tlačidlo myši. Zbraň: koliesko myši alebo 1-0.
+
+    <!--
+    Tlačidlo pre novú hru
+    -->
+    <div id="controls">
+        <button id="newGameButton">Nová Hra</button>
     </div>
-</div>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/PointerLockControls.js"></script>
-<script>
-    // Globálne premenné pre stav hry
-    let scene, camera, renderer, controls;
-    let playerHealth = 100;
-    let isGameOver = false;
-    let hasGameStarted = false;
-    let weaponModel;
+    <!--
+    Pripojenie knižnice Three.js z CDN, ktorá je nevyhnutná pre 3D grafiku.
+    -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 
-    // Zoznam zbraní
-    const weapons = [
-        { name: "Pištoľ", damage: 100, fireRate: 200, zoom: 75, speedMultiplier: 1.0 },
-        { name: "Útočná puška", damage: 30, fireRate: 80, zoom: 75, speedMultiplier: 1.0 },
-        { name: "Snajperka", damage: 2000, fireRate: 1500, zoom: 20, speedMultiplier: 0.5 },
-        { name: "Brokovnica", damage: 250, fireRate: 500, zoom: 75, speedMultiplier: 1.0 },
-        { name: "Guľomet", damage: 15, fireRate: 50, zoom: 75, speedMultiplier: 0.8 },
-        { name: "Raketomet", damage: 5000, fireRate: 3000, zoom: 75, speedMultiplier: 0.6 },
-        { name: "SMG", damage: 20, fireRate: 60, zoom: 75, speedMultiplier: 1.1 },
-        { name: "Lúčová puška", damage: 150, fireRate: 100, zoom: 75, speedMultiplier: 1.0 },
-        { name: "Plazmová pištoľ", damage: 120, fireRate: 150, zoom: 75, speedMultiplier: 1.0 },
-        { name: "Granátomet", damage: 1000, fireRate: 2000, zoom: 75, speedMultiplier: 0.7 }
-    ];
-    let currentWeaponIndex = 0;
-    let enemies = [];
-    let friendlyAI = [];
-    let bullets = []; 
-    let enemyBullets = []; 
-    let friendlyBullets = [];
-    let lastShotTime = 0;
-    
-    // Premenné pohybu
-    let moveForward = false;
-    let moveBackward = false;
-    let moveLeft = false;
-    let moveRight = false;
-    let canJump = true;
-    let velocity = new THREE.Vector3();
-    const speed = 150.0;
-    const playerHeight = 50;
-    
-    // Spawning AI
-    const maxUnitsPerTeam = 40;
+    <script>
+        // === Základné nastavenie scény (Scena, Kamera, Renderer) ===
+        let scene, camera, renderer;
+        let player;
+        const fireballs = [];
+        let keys = {};
+        const playerSpeed = 0.1;
+        const fireballSpeed = 0.5;
+        const maxFireballs = 5;
 
-    // Premenné skóre a času
-    let blueScore = 0;
-    let redScore = 0;
-    let gameTimeLeft = 600;
+        // Tímová logika
+        const NUM_PLAYERS_PER_TEAM = 10;
+        let teamA = []; // Modrý tím (hráč + AI)
+        let teamB = []; // Červený tím (AI)
+        let teamAScore = 0;
+        let teamBScore = 0;
+        const WIN_SCORE = 150; // Zmenený limit pre víťazstvo
+        let isGameOver = false;
 
-    // Premenné pre zameriavanie
-    let isScoped = false;
-    const defaultFOV = 75;
+        // Časovač hry
+        const GAME_DURATION = 8 * 60; // 8 minút v sekundách
+        let timeLeft = GAME_DURATION;
+        let gameInterval;
 
-    // Herné prvky
-    const hud = document.getElementById('hud');
-    const healthBarFill = document.getElementById('health-bar-fill');
-    const currentWeaponDisplay = document.getElementById('current-weapon');
-    const gameMessage = document.getElementById('game-message');
-    const controlsMessage = document.getElementById('controls-message');
-    const crosshair = document.getElementById('crosshair');
-    const sniperScope = document.getElementById('sniper-scope');
-    const scoreboard = document.getElementById('scoreboard');
-    const timerDisplay = document.getElementById('timer');
-    const blueScoreDisplay = document.getElementById('blue-score');
-    const redScoreDisplay = document.getElementById('red-score');
+        // UI elementy
+        const messageBox = document.getElementById('messageBox');
+        const scoreDisplay = document.getElementById('scoreDisplay');
+        const timerDisplay = document.getElementById('timerDisplay');
+        const newGameButton = document.getElementById('newGameButton');
 
-    // Prekážky pre detekciu kolízií AI
-    const obstacles = [];
+        function showMessage(text, duration = 2000) {
+            messageBox.textContent = text;
+            messageBox.style.display = 'block';
+            setTimeout(() => {
+                messageBox.style.display = 'none';
+            }, duration);
+        }
 
-    // Funkcia na zobrazenie správy
-    function showMessage(message, duration = 2000) {
-        gameMessage.textContent = message;
-        gameMessage.style.display = 'block';
-        setTimeout(() => {
-            gameMessage.style.display = 'none';
-        }, duration);
-    }
+        function updateScoreDisplay() {
+            scoreDisplay.innerHTML = `<span class="team-a-score">Modrý tím: ${teamAScore}</span> - <span class="team-b-score">Červený tím: ${teamBScore}</span>`;
+        }
 
-    // Funkcia na vytvorenie modelu zbrane
-    function createWeaponModel() {
-        const weaponGeometry = new THREE.BoxGeometry(5, 5, 25);
-        const weaponMaterial = new THREE.MeshLambertMaterial({ color: 0x505050 });
-        weaponModel = new THREE.Mesh(weaponGeometry, weaponMaterial);
-        
-        weaponModel.position.set(15, -10, -25);
-        weaponModel.rotation.y = Math.PI * 0.2;
-        
-        const barrelGeometry = new THREE.BoxGeometry(2, 2, 15);
-        const barrelMaterial = new THREE.MeshLambertMaterial({ color: 0x303030 });
-        const barrel = new THREE.Mesh(barrelGeometry, barrelMaterial);
-        barrel.position.z = -20;
-        weaponModel.add(barrel);
-        
-        camera.add(weaponModel);
-    }
+        function updateTimerDisplay() {
+            const minutes = Math.floor(timeLeft / 60);
+            const seconds = timeLeft % 60;
+            const formattedMinutes = minutes < 10 ? '0' + minutes : minutes;
+            const formattedSeconds = seconds < 10 ? '0' + seconds : seconds;
+            timerDisplay.textContent = `Čas: ${formattedMinutes}:${formattedSeconds}`;
 
-    // Inicializácia hry
-    function init() {
-        scene = new THREE.Scene();
-        scene.background = new THREE.Color(0x87ceeb);
-        scene.fog = new THREE.Fog(0x87ceeb, 0, 750);
-
-        camera = new THREE.PerspectiveCamera(defaultFOV, window.innerWidth / window.innerHeight, 1, 1000);
-
-        renderer = new THREE.WebGLRenderer({ antialias: true });
-        renderer.setSize(window.innerWidth, window.innerHeight);
-        document.getElementById('game-container').appendChild(renderer.domElement);
-
-        createWeaponModel();
-
-        const gameContainer = document.getElementById('game-container');
-        controls = new THREE.PointerLockControls(camera, gameContainer);
-        
-        gameContainer.addEventListener('click', () => {
-            controls.lock();
-        });
-
-        controls.addEventListener('lock', () => {
-            hud.style.display = 'block';
-            crosshair.style.display = 'block';
-            controlsMessage.style.display = 'none';
-            scoreboard.style.display = 'block';
-            if (!hasGameStarted) {
-                 showMessage("Hra sa začína!");
-                 hasGameStarted = true;
+            if (timeLeft <= 0) {
+                endGameByTime();
             }
+        }
+
+        function endGameByTime() {
+            isGameOver = true;
+            clearInterval(gameInterval);
+            let finalMessage = "";
+            if (teamAScore > teamBScore) {
+                finalMessage = "Koniec! Modrý tím vyhral!";
+            } else if (teamBScore > teamAScore) {
+                finalMessage = "Koniec! Červený tím vyhral!";
+            } else {
+                finalMessage = "Koniec! Remíza!";
+            }
+            showMessage(finalMessage, 5000);
+        }
+
+        function startNewGame() {
+            // Resetovanie skóre a herného stavu
+            teamAScore = 0;
+            teamBScore = 0;
+            timeLeft = GAME_DURATION;
             isGameOver = false;
-        });
+            updateScoreDisplay();
+            updateTimerDisplay();
+            showMessage("Nová Hra Začína!", 2000);
 
-        controls.addEventListener('unlock', () => {
-            if (!isGameOver) {
-                hud.style.display = 'none';
-                crosshair.style.display = 'none';
-                controlsMessage.style.display = 'block';
-                scoreboard.style.display = 'none';
-            }
-        });
+            // Zastavenie a reštartovanie časovača
+            clearInterval(gameInterval);
+            gameInterval = setInterval(() => {
+                timeLeft--;
+                updateTimerDisplay();
+            }, 1000);
 
-        document.addEventListener('keydown', onKeyDown, false);
-        document.addEventListener('keyup', onKeyUp, false);
-        document.addEventListener('mousedown', onMouseDown, false);
-        document.addEventListener('contextmenu', onRightClick, false);
-        document.addEventListener('wheel', onMouseWheel, false);
-
-        raycaster = new THREE.Raycaster();
-
-        createWorld();
-
-        for (let i = 0; i < maxUnitsPerTeam; i++) {
-            spawnUnit('red');
-            spawnUnit('blue');
-        }
-
-        animate();
-    }
-    
-    // Funkcia na zmenu zbrane kolieskom myši
-    function onMouseWheel(event) {
-        if (controls.isLocked === true && !isGameOver) {
-            if (event.deltaY > 0) {
-                currentWeaponIndex++;
-            } else {
-                currentWeaponIndex--;
-            }
-
-            currentWeaponIndex = (currentWeaponIndex + weapons.length) % weapons.length;
-
-            updateWeapon();
-        }
-    }
-
-    // Funkcia na aktualizáciu zbrane
-    function updateWeapon() {
-        currentWeaponDisplay.textContent = weapons[currentWeaponIndex].name;
-        isScoped = false;
-        crosshair.style.display = 'block';
-        sniperScope.style.display = 'none';
-        camera.fov = defaultFOV;
-        camera.updateProjectionMatrix();
-        weaponModel.visible = true;
-    }
-
-    // Funkcia na vytvorenie herného sveta
-    function createWorld() {
-        // Zem
-        const groundGeometry = new THREE.PlaneGeometry(2000, 2000, 100, 100);
-        const groundMaterial = new THREE.MeshLambertMaterial({ color: 0x8a795d });
-        const ground = new THREE.Mesh(groundGeometry, groundMaterial);
-        ground.rotation.x = -Math.PI / 2;
-        scene.add(ground);
-        obstacles.push(ground);
-
-        // Svetlá
-        const ambientLight = new THREE.AmbientLight(0x404040, 2);
-        scene.add(ambientLight);
-        const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
-        directionalLight.position.set(0, 100, 100);
-        scene.add(directionalLight);
-
-        // Vytvorenie domov a prekážok
-        const houseColors = [0xff4d4d, 0x4dff4d, 0x4d4dff, 0xffff4d, 0xff4dff];
-        for (let i = 0; i < 20; i++) {
-            const width = Math.random() * 50 + 20;
-            const depth = Math.random() * 50 + 20;
-            const height = Math.random() * 50 + 20;
-            const houseGeometry = new THREE.BoxGeometry(width, height, depth);
-            const houseMaterial = new THREE.MeshLambertMaterial({ color: houseColors[Math.floor(Math.random() * houseColors.length)] });
-            const house = new THREE.Mesh(houseGeometry, houseMaterial);
-            house.position.x = Math.random() * 1800 - 900;
-            house.position.z = Math.random() * 1800 - 900;
-            house.position.y = height / 2;
-            scene.add(house);
-            obstacles.push(house);
-        }
-
-        // Hranice/steny
-        const wallMaterial = new THREE.MeshLambertMaterial({ color: 0x888888 });
-        const wallHeight = 100;
-        const wallDepth = 20;
-        const wallWidth = 2000 + wallDepth;
-
-        const northWall = new THREE.Mesh(new THREE.BoxGeometry(wallWidth, wallHeight, wallDepth), wallMaterial);
-        northWall.position.set(0, wallHeight / 2, -1000 - wallDepth / 2);
-        scene.add(northWall);
-        obstacles.push(northWall);
-
-        const southWall = new THREE.Mesh(new THREE.BoxGeometry(wallWidth, wallHeight, wallDepth), wallMaterial);
-        southWall.position.set(0, wallHeight / 2, 1000 + wallDepth / 2);
-        scene.add(southWall);
-        obstacles.push(southWall);
-
-        const westWall = new THREE.Mesh(new THREE.BoxGeometry(wallDepth, wallHeight, wallWidth), wallMaterial);
-        westWall.position.set(-1000 - wallDepth / 2, wallHeight / 2, 0);
-        scene.add(westWall);
-        obstacles.push(westWall);
-
-        const eastWall = new THREE.Mesh(new THREE.BoxGeometry(wallDepth, wallHeight, wallWidth), wallMaterial);
-        eastWall.position.set(1000 + wallDepth / 2, wallHeight / 2, 0);
-        scene.add(eastWall);
-        obstacles.push(eastWall);
-    }
-
-    // Funkcia na spawn AI jednotiek
-    function spawnUnit(team) {
-        const safeZoneRadius = 200;
-        const spawnRange = 900;
-
-        const materialColor = (team === 'red') ? 0xff0000 : 0x0000ff;
-        const unitGeometry = new THREE.BoxGeometry(20, 40, 20);
-        const unitMaterial = new THREE.MeshLambertMaterial({ color: materialColor });
-        const unit = new THREE.Mesh(unitGeometry, unitMaterial);
-        
-        let x, z;
-        do {
-            x = Math.random() * spawnRange * 2 - spawnRange;
-            z = Math.random() * spawnRange * 2 - spawnRange;
-        } while (Math.sqrt(x * x + z * z) < safeZoneRadius);
-
-        unit.position.x = x;
-        unit.position.z = z;
-        unit.position.y = 20;
-        unit.health = 100;
-        unit.lastShotTime = 0;
-
-        if (team === 'red') {
-            enemies.push(unit);
-        } else {
-            friendlyAI.push(unit);
-        }
-        scene.add(unit);
-    }
-
-    // Logika streľby hráča
-    function onMouseDown(event) {
-        if (controls.isLocked === true && event.button === 0 && !isGameOver) {
-            const currentWeapon = weapons[currentWeaponIndex];
-            
-            const bulletGeometry = new THREE.SphereGeometry(2, 8, 8);
-            const bulletMaterial = new THREE.MeshBasicMaterial({ color: 0xffff00 });
-            const bullet = new THREE.Mesh(bulletGeometry, bulletMaterial);
-
-            bullet.position.copy(camera.position);
-
-            const bulletDirection = new THREE.Vector3();
-            camera.getWorldDirection(bulletDirection);
-            bullet.velocity = bulletDirection.multiplyScalar(1000);
-
-            scene.add(bullet);
-            bullets.push(bullet);
-        }
-    }
-    
-    // Pravým klikom prepína zameriavač
-    function onRightClick(event) {
-        if (controls.isLocked === true && !isGameOver) {
-            event.preventDefault();
-            
-            const currentWeapon = weapons[currentWeaponIndex];
-            if (currentWeapon.name === "Snajperka") {
-                isScoped = !isScoped;
-                crosshair.style.display = isScoped ? 'none' : 'block';
-                sniperScope.style.display = isScoped ? 'block' : 'none';
-                weaponModel.visible = !isScoped;
-            } else {
-                 isScoped = false;
-                 crosshair.style.display = 'block';
-                 sniperScope.style.display = 'none';
-                 weaponModel.visible = true;
-            }
-            camera.fov = isScoped ? currentWeapon.zoom : defaultFOV;
-            camera.updateProjectionMatrix();
-        }
-    }
-
-    // Nájde najbližší cieľ
-    function findNearestTarget(unit, targets) {
-        let nearestTarget = null;
-        let minDistance = Infinity;
-
-        if (unit.material.color.getHex() === 0xff0000) {
-            const playerPosition = controls.getObject().position;
-            targets = [...friendlyAI, { position: playerPosition, isPlayer: true }];
-        }
-        
-        targets.forEach(target => {
-            const distance = unit.position.distanceTo(target.position);
-            if (distance < minDistance) {
-                minDistance = distance;
-                nearestTarget = target;
-            }
-        });
-        return nearestTarget;
-    }
-
-    // Funkcia na kontrolu a vyhýbanie sa prekážkam
-    function avoidObstacles(unit, direction) {
-        const avoidanceRaycaster = new THREE.Raycaster(unit.position, direction, 0, 50);
-        const intersections = avoidanceRaycaster.intersectObjects(obstacles, true);
-        if (intersections.length > 0) {
-            direction.set(Math.random() - 0.5, 0, Math.random() - 0.5).normalize();
-        }
-    }
-
-    // Logika AI (nepriatelia a spolubojovníci)
-    function updateAI(delta) {
-        const separationDistance = 100;
-        const avoidanceStrength = 0.5;
-
-        enemies.forEach(enemy => {
-            const target = findNearestTarget(enemy, friendlyAI);
-            let targetDirection = new THREE.Vector3();
-            if (target) {
-                targetDirection.subVectors(target.position, enemy.position);
-            }
-
-            let avoidanceVector = new THREE.Vector3();
-            enemies.forEach(otherEnemy => {
-                if (enemy !== otherEnemy) {
-                    const distance = enemy.position.distanceTo(otherEnemy.position);
-                    if (distance < separationDistance) {
-                        const awayVector = new THREE.Vector3().subVectors(enemy.position, otherEnemy.position);
-                        awayVector.normalize();
-                        avoidanceVector.add(awayVector);
-                    }
-                }
+            // Odstránenie všetkých postáv a gulí zo scény
+            [...teamA, ...teamB, ...fireballs].forEach(obj => {
+                scene.remove(obj);
             });
 
-            let combinedVector = new THREE.Vector3();
-            combinedVector.addScaledVector(targetDirection.normalize(), 1.0);
-            combinedVector.addScaledVector(avoidanceVector, avoidanceStrength);
-            
-            avoidObstacles(enemy, combinedVector);
-            
-            if (combinedVector.length() > 0) {
-                combinedVector.normalize();
-                enemy.position.addScaledVector(combinedVector, delta * 80);
-            }
-            enemy.position.y = 20;
+            teamA = [];
+            teamB = [];
+            fireballs.length = 0;
 
-            const currentTime = performance.now();
-            if (target && currentTime - enemy.lastShotTime > 500) {
-                enemy.lastShotTime = currentTime;
+            // Vytvorenie nových postáv a ich pridanie do scény
+            initCharacters();
+        }
+
+        /**
+         * Vytvorí novú postavu (hráča alebo AI) s danou farbou.
+         * @param {string} teamColor Farba tímu (napr. 0x00bfff alebo 0xff4500).
+         * @param {boolean} isPlayer Určuje, či ide o postavu hráča.
+         * @param {boolean} isProfessional Určuje, či ide o profesionálneho AI bojovníka.
+         * @returns {object} Objekt s meshom a hernými vlastnosťami.
+         */
+        function createCharacter(teamColor, isPlayer = false, isProfessional = false) {
+            const characterGeometry = new THREE.SphereGeometry(1, 32, 32);
+            let characterMaterial;
+
+            if (isProfessional) {
+                // Profesionálny AI má iný materiál, aby žiaril
+                characterMaterial = new THREE.MeshStandardMaterial({
+                    color: 0xffd700, // Zlatá farba
+                    emissive: 0xffd700,
+                    emissiveIntensity: 1.5
+                });
+            } else {
+                characterMaterial = new THREE.MeshBasicMaterial({ color: teamColor });
+            }
+
+            const characterMesh = new THREE.Mesh(characterGeometry, characterMaterial);
+            characterMesh.position.y = 0.5;
+
+            // Zväčšenie profesionálneho AI
+            if (isProfessional) {
+                characterMesh.scale.set(1.5, 1.5, 1.5);
+            }
+
+            // Pridanie menovky s tímom a typom AI pre jednoduchšiu identifikáciu
+            characterMesh.userData = {
+                team: teamColor === 0x00bfff ? 'A' : 'B',
+                health: 100,
+                isPlayer: isPlayer,
+                isAlive: true,
+                isProfessional: isProfessional,
+                respawnTime: 0,
+                moveDirection: new THREE.Vector3(0, 0, 0),
+                shootCooldown: 0,
+            };
+
+            return characterMesh;
+        }
+
+        /**
+         * Vytvorí novú ohnivú guľu vrátane efektu žiarenia.
+         * @param {string} ownerTeam Tím, ktorý guľu vystrelil.
+         * @returns {THREE.Group} Skupina obsahujúca guľu a jej žiarenie.
+         */
+        function createFireball(ownerTeam) {
+            const fireballGroup = new THREE.Group();
+            const fireballGeometry = new THREE.SphereGeometry(0.5, 16, 16);
+            const fireballMaterial = new THREE.MeshBasicMaterial({ color: 0xff4500 });
+            const fireballMesh = new THREE.Mesh(fireballGeometry, fireballMaterial);
+            fireballGroup.add(fireballMesh);
+
+            const glowGeometry = new THREE.SphereGeometry(0.6, 16, 16);
+            const glowMaterial = new THREE.MeshBasicMaterial({
+                color: 0xffa500,
+                transparent: true,
+                opacity: 0.8,
+                blending: THREE.AdditiveBlending
+            });
+            const glowMesh = new THREE.Mesh(glowGeometry, glowMaterial);
+            fireballGroup.add(glowMesh);
+
+            // Uložíme tím strelca, aby nezasiahol svojich
+            fireballGroup.userData.ownerTeam = ownerTeam;
+
+            return fireballGroup;
+        }
+
+        function initCharacters() {
+            // Vytvorenie postáv
+            player = createCharacter(0x00bfff, true);
+            scene.add(player);
+            teamA.push(player);
+
+            // Vytvorenie jedného profesionálneho AI hráča
+            const professionalAI = createCharacter(0xff4500, false, true);
+            professionalAI.position.x = Math.random() * 80 - 40;
+            professionalAI.position.z = Math.random() * 80 - 40;
+            scene.add(professionalAI);
+            teamB.push(professionalAI);
+            
+            // Vytvorenie zvyšných AI postáv pre oba tímy
+            for (let i = 0; i < NUM_PLAYERS_PER_TEAM - 1; i++) {
+                const aiA = createCharacter(0x00bfff);
+                aiA.position.x = Math.random() * 80 - 40;
+                aiA.position.z = Math.random() * 80 - 40;
+                scene.add(aiA);
+                teamA.push(aiA);
+
+                const aiB = createCharacter(0xff4500);
+                aiB.position.x = Math.random() * 80 - 40;
+                aiB.position.z = Math.random() * 80 - 40;
+                scene.add(aiB);
+                teamB.push(aiB);
+            }
+        }
+
+        function init() {
+            // Vytvorenie scény
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x0a0a23);
+
+            // Vytvorenie kamery
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.z = 20;
+            camera.position.y = 15;
+            camera.lookAt(0, 0, 0);
+
+            // Vytvorenie renderera
+            renderer = new THREE.WebGLRenderer({ canvas: document.getElementById('gameCanvas') });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+
+            // Mapa - jednoduchá vesmírna plocha
+            const groundGeometry = new THREE.PlaneGeometry(100, 100);
+            const groundMaterial = new THREE.MeshBasicMaterial({ color: 0x33334d, side: THREE.DoubleSide });
+            const ground = new THREE.Mesh(groundGeometry, groundMaterial);
+            ground.rotation.x = Math.PI / 2;
+            scene.add(ground);
+
+            // Pridanie svetiel pre lepší vizuál
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+            scene.add(ambientLight);
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            directionalLight.position.set(1, 1, 1);
+            scene.add(directionalLight);
+
+            // Inicializácia postáv a spuštění novej hry
+            startNewGame();
+        }
+
+        // === Riešenie vstupov od užívateľa ===
+        function onKeyDown(event) {
+            keys[event.key.toLowerCase()] = true;
+            if (event.key === 'ArrowUp') keys['w'] = true;
+            if (event.key === 'ArrowDown') keys['s'] = true;
+            if (event.key === 'ArrowLeft') keys['a'] = true;
+            if (event.key === 'ArrowRight') keys['d'] = true;
+        }
+
+        function onKeyUp(event) {
+            keys[event.key.toLowerCase()] = false;
+            if (event.key === 'ArrowUp') keys['w'] = false;
+            if (event.key === 'ArrowDown') keys['s'] = false;
+            if (event.key === 'ArrowLeft') keys['a'] = false;
+            if (event.key === 'ArrowRight') keys['d'] = false;
+        }
+
+        function onMouseDown(event) {
+            // Kontrola či hra neskončila, ale už žiadne obmedzenie počtu gulí
+            if (isGameOver) {
+                return;
+            }
+
+            const fireball = createFireball(player.userData.team);
+            fireball.position.copy(player.position);
+            
+            const direction = new THREE.Vector3();
+            camera.getWorldDirection(direction);
+            direction.y = 0;
+            direction.normalize();
+
+            fireball.userData.direction = direction;
+            fireball.userData.velocity = fireballSpeed;
+
+            scene.add(fireball);
+            fireballs.push(fireball);
+        }
+
+        // === Herná logika a aktualizácia stavu ===
+        function checkCollisions() {
+            if (isGameOver) return;
+            
+            for (let i = fireballs.length - 1; i >= 0; i--) {
+                const fireball = fireballs[i];
+                let hit = false;
                 
-                const enemyBulletGeometry = new THREE.SphereGeometry(2, 8, 8);
-                const enemyBulletMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000 });
-                const enemyBullet = new THREE.Mesh(enemyBulletGeometry, enemyBulletMaterial);
-                enemyBullet.position.copy(enemy.position);
-                enemyBullet.position.y += 20;
+                // Kontrola kolízie s postavami z opačného tímu
+                const targetTeam = fireball.userData.ownerTeam === 'A' ? teamB : teamA;
+                
+                for (const character of targetTeam) {
+                    if (!character.userData.isAlive) continue;
+                    
+                    // Upravená kontrola vzdialenosti kvôli zväčšeniu profesionálneho AI
+                    const distance = fireball.position.distanceTo(character.position);
+                    const hitRadius = character.userData.isProfessional ? 2.5 : 2;
 
-                const enemyBulletDirection = new THREE.Vector3().subVectors(target.position, enemy.position);
-                enemyBulletDirection.normalize();
-                enemyBullet.velocity = enemyBulletDirection.multiplyScalar(500);
-
-                scene.add(enemyBullet);
-                enemyBullets.push(enemyBullet);
-            }
-        });
-
-        friendlyAI.forEach(friendly => {
-            const target = findNearestTarget(friendly, enemies);
-            let targetDirection = new THREE.Vector3();
-            if (target) {
-                const targetPositionAdjusted = new THREE.Vector3(target.position.x, target.position.y, target.position.z);
-                targetDirection.subVectors(targetPositionAdjusted, friendly.position);
-            }
-
-            let avoidanceVector = new THREE.Vector3();
-            friendlyAI.forEach(otherFriendly => {
-                if (friendly !== otherFriendly) {
-                    const distance = friendly.position.distanceTo(otherFriendly.position);
-                    if (distance < separationDistance) {
-                        const awayVector = new THREE.Vector3().subVectors(friendly.position, otherFriendly.position);
-                        awayVector.normalize();
-                        avoidanceVector.add(awayVector);
+                    if (distance < hitRadius) {
+                        character.userData.health -= 50; // Zníženie zdravia
+                        hit = true;
+                        
+                        // Zomrel?
+                        if (character.userData.health <= 0) {
+                            character.userData.isAlive = false;
+                            character.visible = false;
+                            
+                            // Aktualizácia skóre
+                            if (fireball.userData.ownerTeam === 'A') {
+                                teamAScore++;
+                            } else {
+                                teamBScore++;
+                            }
+                            updateScoreDisplay();
+                            
+                            // Kontrola, či hra skončila
+                            if (teamAScore >= WIN_SCORE || teamBScore >= WIN_SCORE) {
+                                isGameOver = true;
+                                showMessage(`${teamAScore >= WIN_SCORE ? 'Modrý tím' : 'Červený tím'} vyhral!`, 5000);
+                            }
+                            
+                            // Respawn po 3 sekundách
+                            setTimeout(() => {
+                                if (!isGameOver) {
+                                    resetCharacter(character);
+                                }
+                            }, 3000);
+                        }
                     }
+                }
+                
+                // Odstránenie ohnivej gule po kolízii
+                if (hit) {
+                    scene.remove(fireball);
+                    fireballs.splice(i, 1);
+                }
+            }
+        }
+
+        function resetCharacter(character) {
+            character.userData.isAlive = true;
+            character.userData.health = 100;
+            character.visible = true;
+            character.position.set(Math.random() * 80 - 40, 0.5, Math.random() * 80 - 40);
+        }
+
+        function updateAI() {
+            if (isGameOver) return;
+            
+            // Logika AI pre obe tímy
+            const allCharacters = [...teamA, ...teamB];
+
+            allCharacters.forEach(character => {
+                if (!character.userData.isAlive || character.userData.isPlayer) return;
+                
+                // Určenie rýchlosti a náhody pre profesionálneho AI
+                const speed = character.userData.isProfessional ? 0.1 : 0.05; // Zvýšenie rýchlosti profi AI
+                const shootChance = character.userData.isProfessional ? 0.015 : 0.005; // Zvýšenie šance na streľbu
+
+                // Pohyb AI
+                const now = performance.now();
+                if (!character.userData.nextMoveTime || now > character.userData.nextMoveTime) {
+                    character.userData.moveDirection.x = (Math.random() - 0.5) * 2;
+                    character.userData.moveDirection.z = (Math.random() - 0.5) * 2;
+
+                    // Kontrola hraníc mapy a zmena smeru, ak sa blíži k okraju
+                    const boundary = 40;
+                    if (character.position.x > boundary) character.userData.moveDirection.x = -1;
+                    if (character.position.x < -boundary) character.userData.moveDirection.x = 1;
+                    if (character.position.z > boundary) character.userData.moveDirection.z = -1;
+                    if (character.position.z < -boundary) character.userData.moveDirection.z = 1;
+
+                    character.userData.nextMoveTime = now + (Math.random() * 2000 + 1000); // Nový smer každú 1-3 sekundy
+                }
+                
+                character.position.x += character.userData.moveDirection.x * speed;
+                character.position.z += character.userData.moveDirection.z * speed;
+                
+                // Strieľanie AI
+                if (Math.random() < shootChance) { // Väčšia šanca pre profesionálneho AI
+                    const fireball = createFireball(character.userData.team);
+                    fireball.position.copy(character.position);
+                    
+                    const direction = new THREE.Vector3();
+                    if (character.userData.isProfessional) {
+                        // Profesionálny AI mieri na najbližšieho hráča z opačného tímu
+                        const enemies = character.userData.team === 'A' ? teamB : teamA;
+                        let closestEnemy = null;
+                        let minDistance = Infinity;
+
+                        enemies.forEach(enemy => {
+                            if (enemy.userData.isAlive) {
+                                const distance = character.position.distanceTo(enemy.position);
+                                if (distance < minDistance) {
+                                    minDistance = distance;
+                                    closestEnemy = enemy;
+                                }
+                            }
+                        });
+
+                        if (closestEnemy) {
+                             direction.subVectors(closestEnemy.position, character.position).normalize();
+                        } else {
+                            // Ak nie je cieľ, strieľaj náhodne
+                            direction.x = (Math.random() - 0.5) * 2;
+                            direction.z = (Math.random() - 0.5) * 2;
+                            direction.y = 0;
+                            direction.normalize();
+                        }
+                    } else {
+                        // Ostatné AI strieľajú náhodne
+                        direction.x = (Math.random() - 0.5) * 2;
+                        direction.z = (Math.random() - 0.5) * 2;
+                        direction.y = 0;
+                        direction.normalize();
+                    }
+                    
+                    fireball.userData.direction = direction;
+                    fireball.userData.velocity = fireballSpeed;
+
+                    scene.add(fireball);
+                    fireballs.push(fireball);
                 }
             });
-
-            let combinedVector = new THREE.Vector3();
-            combinedVector.addScaledVector(targetDirection.normalize(), 1.0);
-            combinedVector.addScaledVector(avoidanceVector, avoidanceStrength);
-            
-            avoidObstacles(friendly, combinedVector);
-
-            if (combinedVector.length() > 0) {
-                combinedVector.normalize();
-                friendly.position.addScaledVector(combinedVector, delta * 80);
-            }
-            friendly.position.y = 20;
-            
-            const currentTime = performance.now();
-            if (target && currentTime - friendly.lastShotTime > 500) {
-                friendly.lastShotTime = currentTime;
-
-                const friendlyBulletGeometry = new THREE.SphereGeometry(2, 8, 8);
-                const friendlyBulletMaterial = new THREE.MeshBasicMaterial({ color: 0x00ffff });
-                const friendlyBullet = new THREE.Mesh(friendlyBulletGeometry, friendlyBulletMaterial);
-                friendlyBullet.position.copy(friendly.position);
-                friendlyBullet.position.y += 20;
-
-                const friendlyBulletDirection = new THREE.Vector3().subVectors(target.position, friendly.position);
-                friendlyBulletDirection.normalize();
-                friendlyBullet.velocity = friendlyBulletDirection.multiplyScalar(500);
-
-                scene.add(friendlyBullet);
-                friendlyBullets.push(friendlyBullet);
-            }
-        });
-    }
-
-    // Funkcia na spracovanie smrti AI jednotky
-    function handleAIDeath(unit, team) {
-        scene.remove(unit);
-        if (team === 'red') {
-            const index = enemies.indexOf(unit);
-            if (index > -1) {
-                enemies.splice(index, 1);
-            }
-        } else {
-            const index = friendlyAI.indexOf(unit);
-            if (index > -1) {
-                friendlyAI.splice(index, 1);
-            }
         }
         
-        spawnUnit(team);
-    }
+        function animate() {
+            requestAnimationFrame(animate);
 
-    // Kontrola kolízií guliek hráča
-    function updateBullets(delta) {
-        for (let i = bullets.length - 1; i >= 0; i--) {
-            const bullet = bullets[i];
-            bullet.position.addScaledVector(bullet.velocity, delta);
-
-            let hit = false;
-            for (let j = enemies.length - 1; j >= 0; j--) {
-                const enemy = enemies[j];
-                const distance = bullet.position.distanceTo(enemy.position);
-
-                if (distance < 20) {
-                    enemy.health -= weapons[currentWeaponIndex].damage; 
-                    if (enemy.health <= 0) {
-                        handleAIDeath(enemy, 'red');
-                        blueScore++;
-                    }
-                    hit = true;
-                    break;
-                }
+            if (isGameOver) {
+                renderer.render(scene, camera);
+                return;
             }
 
-            if (hit || bullet.position.length() > 1000) {
-                scene.remove(bullet);
-                bullets.splice(i, 1);
-            }
-        }
-    }
-
-    // Kontrola kolízií guliek nepriateľov
-    function updateEnemyBullets(delta) {
-        for (let i = enemyBullets.length - 1; i >= 0; i--) {
-            const bullet = enemyBullets[i];
-            bullet.position.addScaledVector(bullet.velocity, delta);
+            // Pohyb hráča
+            const playerMoveVector = new THREE.Vector3(0, 0, 0);
+            if (keys['w']) playerMoveVector.z -= playerSpeed;
+            if (keys['s']) playerMoveVector.z += playerSpeed;
+            if (keys['a']) playerMoveVector.x -= playerSpeed;
+            if (keys['d']) playerMoveVector.x += playerSpeed;
             
-            const playerPosition = controls.getObject().position;
-            const distanceToPlayer = bullet.position.distanceTo(playerPosition);
-            let hit = false;
-            
-            if (distanceToPlayer < 20) {
-                takeDamage(10);
-                hit = true;
-            } else {
-                for (let j = friendlyAI.length - 1; j >= 0; j--) {
-                    const friendly = friendlyAI[j];
-                    const distanceToFriendly = bullet.position.distanceTo(friendly.position);
-                    if (distanceToFriendly < 20) {
-                        friendly.health -= 10;
-                        if (friendly.health <= 0) {
-                            handleAIDeath(friendly, 'blue');
-                            redScore++;
-                        }
-                        hit = true;
-                        break;
-                    }
+            player.position.add(playerMoveVector);
+
+            // Aktualizácia pozície kamery, aby sledovala hráča
+            camera.position.x = player.position.x;
+            camera.position.z = player.position.z + 15;
+            camera.lookAt(player.position);
+
+            // Aktualizácia AI a pohyb ohnivých gulí
+            updateAI();
+            fireballs.forEach(fireball => {
+                fireball.position.addScaledVector(fireball.userData.direction, fireball.userData.velocity);
+            });
+
+            // Odstránenie gulí, ktoré sú mimo mapy
+            for (let i = fireballs.length - 1; i >= 0; i--) {
+                const fireball = fireballs[i];
+                if (Math.abs(fireball.position.x) > 50 || Math.abs(fireball.position.z) > 50) {
+                    scene.remove(fireball);
+                    fireballs.splice(i, 1);
                 }
             }
 
-            if (hit || bullet.position.length() > 1000) {
-                scene.remove(bullet);
-                enemyBullets.splice(i, 1);
-            }
-        }
-    }
-
-    // Kontrola kolízií guliek AI spolubojovníkov
-    function updateFriendlyBullets(delta) {
-        for (let i = friendlyBullets.length - 1; i >= 0; i--) {
-            const bullet = friendlyBullets[i];
-            bullet.position.addScaledVector(bullet.velocity, delta);
-
-            let hit = false;
-            for (let j = enemies.length - 1; j >= 0; j--) {
-                const enemy = enemies[j];
-                const distance = bullet.position.distanceTo(enemy.position);
-
-                if (distance < 20) {
-                    enemy.health -= 20;
-                    if (enemy.health <= 0) {
-                        handleAIDeath(enemy, 'red');
-                        blueScore++;
-                    }
-                    hit = true;
-                    break;
-                }
-            }
-
-            if (hit || bullet.position.length() > 1000) {
-                scene.remove(bullet);
-                friendlyBullets.splice(i, 1);
-            }
-        }
-    }
-
-    // NOVÁ FUNKCIA: Kolízie "dotykom smrti"
-    function checkMeleeCollisions() {
-        const collisionRadius = 25; // Polomer pre detekciu dotyku
-
-        // Kontrola, či sa nepriateľ dotkne hráča alebo spolubojovníka
-        enemies.forEach(enemy => {
-            const playerPosition = controls.getObject().position;
-            const distanceToPlayer = enemy.position.distanceTo(playerPosition);
-
-            // Kolízia s hráčom
-            if (distanceToPlayer < collisionRadius) {
-                takeDamage(100); // Okamžite zabije hráča
-                redScore++; // Započíta kill
-            }
-
-            // Kolízia s AI spolubojovníkmi
-            for (let i = friendlyAI.length - 1; i >= 0; i--) {
-                const friendly = friendlyAI[i];
-                const distanceToFriendly = enemy.position.distanceTo(friendly.position);
-                if (distanceToFriendly < collisionRadius) {
-                    handleAIDeath(friendly, 'blue');
-                    redScore++; // Započíta kill pre červený tím
-                }
-            }
-        });
-
-        // Kontrola, či sa spolubojovník dotkne nepriateľa
-        friendlyAI.forEach(friendly => {
-            for (let i = enemies.length - 1; i >= 0; i--) {
-                const enemy = enemies[i];
-                const distanceToEnemy = friendly.position.distanceTo(enemy.position);
-                if (distanceToEnemy < collisionRadius) {
-                    handleAIDeath(enemy, 'red');
-                    blueScore++; // Započíta kill pre modrý tím
-                }
-            }
-        });
-    }
-
-    // Logika poškodenia hráča
-    function takeDamage(amount) {
-        playerHealth -= amount;
-        if (playerHealth < 0) playerHealth = 0;
-        healthBarFill.style.width = `${playerHealth}%`;
-        if (playerHealth <= 0) {
-            redScore++;
-            gameOver();
-        }
-    }
-
-    // Logika konca hry (smrť hráča)
-    function gameOver() {
-        isGameOver = true;
-        controls.unlock();
-        showMessage("Zomrel si! Znovuzrodenie...", 3000);
-            
-        setTimeout(() => {
-            playerHealth = 100;
-            healthBarFill.style.width = `${playerHealth}%`;
-            controls.getObject().position.set(0, playerHeight, 0);
-            enemyBullets.forEach(bullet => scene.remove(bullet));
-            enemyBullets = [];
-            isGameOver = false;
-            controls.lock();
-        }, 3000);
-    }
-    
-    // Logika konca hry (časový limit)
-    function endGame() {
-        isGameOver = true;
-        controls.unlock();
-        let message = "";
-        if (blueScore > redScore) {
-            message = "Modrý tím vyhral!";
-        } else if (redScore > blueScore) {
-            message = "Červený tím vyhral!";
-        } else {
-            message = "Remíza!";
-        }
-        showMessage(`Hra skončila! ${message}`, 5000);
-
-        setTimeout(resetGame, 5000);
-    }
-
-    // Resetovanie hry
-    function resetGame() {
-        enemies.forEach(enemy => scene.remove(enemy));
-        enemies = [];
-        friendlyAI.forEach(friendly => scene.remove(friendly));
-        friendlyAI = [];
-        bullets.forEach(bullet => scene.remove(bullet));
-        bullets = [];
-        enemyBullets.forEach(bullet => scene.remove(bullet));
-        enemyBullets = [];
-        friendlyBullets.forEach(bullet => scene.remove(bullet));
-        friendlyBullets = [];
-        
-        blueScore = 0;
-        redScore = 0;
-        gameTimeLeft = 600;
-        playerHealth = 100;
-        healthBarFill.style.width = `${playerHealth}%`;
-        
-        for (let i = 0; i < maxUnitsPerTeam; i++) {
-            spawnUnit('red');
-            spawnUnit('blue');
+            checkCollisions();
+            renderer.render(scene, camera);
         }
 
-        controls.getObject().position.set(0, playerHeight, 0);
+        // Spustenie hry po načítaní okna
+        window.onload = function() {
+            init();
+            animate();
+            document.addEventListener('keydown', onKeyDown);
+            document.addEventListener('keyup', onKeyUp);
+            document.addEventListener('mousedown', onMouseDown);
+            newGameButton.addEventListener('click', startNewGame);
 
-        isGameOver = false;
-        controls.lock();
-    }
-
-    // Aktualizácia skóre
-    function updateScoreboard() {
-        const minutes = Math.floor(gameTimeLeft / 60);
-        const seconds = Math.floor(gameTimeLeft % 60).toString().padStart(2, '0');
-        timerDisplay.textContent = `Čas: ${minutes}:${seconds}`;
-        blueScoreDisplay.textContent = blueScore;
-        redScoreDisplay.textContent = redScore;
-    }
-
-    // Spracovanie vstupu z klávesnice
-    function onKeyDown(event) {
-        switch (event.code) {
-            case 'KeyW':
-            case 'ArrowUp':
-                moveForward = true;
-                break;
-            case 'KeyA':
-            case 'ArrowLeft':
-                moveLeft = true;
-                break;
-            case 'KeyS':
-            case 'ArrowDown':
-                moveBackward = true;
-                break;
-            case 'KeyD':
-            case 'ArrowRight':
-                moveRight = true;
-                break;
-            case 'Space':
-                if (canJump === true) velocity.y += 350;
-                canJump = false;
-                break;
-            default:
-                if (event.code.startsWith('Digit')) {
-                    const digit = parseInt(event.code.slice(5), 10);
-                    if (digit >= 1 && digit <= weapons.length) {
-                        currentWeaponIndex = digit - 1;
-                        updateWeapon();
-                    }
-                }
-                break;
-        }
-    }
-
-    function onKeyUp(event) {
-        switch (event.code) {
-            case 'KeyW':
-            case 'ArrowUp':
-                moveForward = false;
-                break;
-            case 'KeyA':
-            case 'ArrowLeft':
-                moveLeft = false;
-                break;
-            case 'KeyS':
-            case 'ArrowDown':
-                moveBackward = false;
-                break;
-            case 'KeyD':
-            case 'ArrowRight':
-                moveRight = false;
-                break;
-        }
-    }
-
-    // Animačná slučka
-    let prevTime = performance.now();
-    function animate() {
-        requestAnimationFrame(animate);
-
-        const currentTime = performance.now();
-        const delta = (currentTime - prevTime) / 1000;
-
-        if (controls.isLocked === true && !isGameOver) {
-            gameTimeLeft -= delta;
-            if (gameTimeLeft <= 0) {
-                gameTimeLeft = 0;
-                endGame();
-            }
-            updateScoreboard();
-
-            velocity.y -= 9.8 * 100.0 * delta;
-
-            const currentWeapon = weapons[currentWeaponIndex];
-            const currentSpeed = speed * currentWeapon.speedMultiplier;
-
-            const horizontalVelocity = new THREE.Vector3();
-            if (moveForward) horizontalVelocity.z += currentSpeed;
-            if (moveBackward) horizontalVelocity.z -= currentSpeed;
-            if (moveLeft) horizontalVelocity.x -= currentSpeed;
-            if (moveRight) horizontalVelocity.x += currentSpeed;
-
-            controls.moveRight(horizontalVelocity.x * delta);
-            controls.moveForward(horizontalVelocity.z * delta);
-
-            controls.getObject().position.y += velocity.y * delta;
-
-            if (controls.getObject().position.y < playerHeight) {
-                velocity.y = 0;
-                controls.getObject().position.y = playerHeight;
-                canJump = true;
-            }
-
-            const playerPosition = controls.getObject().position;
-            const wallBoundary = 980;
-            
-            playerPosition.x = Math.max(-wallBoundary, Math.min(wallBoundary, playerPosition.x));
-            playerPosition.z = Math.max(-wallBoundary, Math.min(wallBoundary, playerPosition.z));
-
-            // Aktualizácia AI a striel
-            updateAI(delta);
-            updateBullets(delta); 
-            updateEnemyBullets(delta); 
-            updateFriendlyBullets(delta);
-
-            // NOVÁ FUNKCIA: Kontrola kolízií "dotykom smrti"
-            checkMeleeCollisions();
-        }
-
-        prevTime = currentTime;
-        renderer.render(scene, camera);
-    }
-
-    // Spusti hru pri načítaní okna
-    window.onload = init;
-</script>
-
+            // Reakcia na zmenu veľkosti okna
+            window.addEventListener('resize', () => {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+            });
+        };
+    </script>
 </body>
 </html>
+
 
 
 
